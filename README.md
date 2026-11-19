@@ -8,7 +8,7 @@ Upload any PDF → Ask questions → Get AI-powered answers with source citation
 
 ## Tech Stack
 
-- **Frontend**: React
+- **Frontend**: React + Vite
 - **Backend**: Python + FastAPI
 - **AI**: LangChain + Google Gemini
 - **Embeddings**: HuggingFace (all-MiniLM-L6-v2, local)
@@ -37,7 +37,7 @@ Response + source pages returned to user
 
 ### Prerequisites
 - Python 3.11+
-- Node.js 18+
+- Node.js 22.12+
 - Google Gemini API key (free at aistudio.google.com)
 
 ### Backend
@@ -67,9 +67,10 @@ npm start
 
 Open http://localhost:3000
 
-The frontend calls the backend at http://localhost:8000. To use another address, set `REACT_APP_API_URL` before `npm start` or `npm run build`.
+The frontend calls the backend at http://localhost:8000. To use another address, set `VITE_API_URL` before `npm start` or `npm run build`.
 
-Run the frontend tests with `npm test`.
+- `npm test` runs the frontend tests
+- `npm run build` creates a production build in `frontend/dist`
 
 ## Configuration
 

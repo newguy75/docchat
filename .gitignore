@@ -2,6 +2,7 @@ backend/.env
 backend/__pycache__/
 node_modules/
 frontend/node_modules/
-frontend/build/
+frontend/dist/
 *.pyc
 .venv/
+.DS_Store

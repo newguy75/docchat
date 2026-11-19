@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import App from "./App";
 
 function mockFetch(handler) {
-  global.fetch = jest.fn(handler);
+  vi.stubGlobal("fetch", vi.fn(handler));
 }
 
 function choosePdf() {
@@ -17,7 +17,7 @@ async function uploadPdf() {
 }
 
 afterEach(() => {
-  delete global.fetch;
+  vi.unstubAllGlobals();
 });
 
 test("shows the upload screen first", () => {
@@ -48,7 +48,7 @@ test("the Enter that confirms an input method composition does not send the ques
   fireEvent.change(input, { target: { value: "苹果" } });
   fireEvent.keyDown(input, { key: "Enter", isComposing: true });
   fireEvent.keyDown(input, { key: "Enter", keyCode: 229 });
-  expect(global.fetch).toHaveBeenCalledTimes(1); // only the upload
+  expect(fetch).toHaveBeenCalledTimes(1); // only the upload
 });
 
 test("shows the reason the backend gives for an error", async () => {
