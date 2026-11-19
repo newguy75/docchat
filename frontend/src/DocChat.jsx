@@ -1,6 +1,28 @@
 import { useState, useRef, useEffect } from "react";
 
-const API_URL = "http://localhost:8000";
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+
+// Call the backend and return its JSON. Throws an Error with a readable message on failure.
+async function callApi(path, options) {
+  let res;
+  try {
+    res = await fetch(`${API_URL}${path}`, options);
+  } catch {
+    throw new Error(`Cannot reach the backend at ${API_URL}. Is it running?`);
+  }
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    // Not JSON, for example a plain "Internal Server Error"
+  }
+  if (!res.ok) {
+    const detail = data && data.detail;
+    const message = Array.isArray(detail) ? detail.map(d => d.msg).join("; ") : detail;
+    throw new Error(message || `Request failed (HTTP ${res.status})`);
+  }
+  return data;
+}
 
 export default function DocChat() {
   const [messages, setMessages] = useState([]);
@@ -13,7 +35,7 @@ export default function DocChat() {
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    bottomRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages]);
 
   const handleUpload = async (e) => {
@@ -24,12 +46,10 @@ export default function DocChat() {
     const formData = new FormData();
     formData.append("file", file);
     try {
-      const res = await fetch(`${API_URL}/upload`, {
+      const data = await callApi("/upload", {
         method: "POST",
         body: formData,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail);
       setDocName(file.name);
       setMessages([{
         role: "system",
@@ -50,13 +70,11 @@ export default function DocChat() {
     setMessages(prev => [...prev, { role: "user", text: question }]);
     setAsking(true);
     try {
-      const res = await fetch(`${API_URL}/ask`, {
+      const data = await callApi("/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail);
       setMessages(prev => [...prev, {
         role: "assistant",
         text: data.answer,
@@ -70,7 +88,12 @@ export default function DocChat() {
   };
 
   const handleReset = async () => {
-    await fetch(`${API_URL}/reset`, { method: "DELETE" });
+    try {
+      await callApi("/reset", { method: "DELETE" });
+    } catch (err) {
+      setError(err.message);
+      return;
+    }
     setDocName(null);
     setMessages([]);
     setError(null);
@@ -264,7 +287,10 @@ export default function DocChat() {
           <input
             value={input}
             onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleAsk()}
+            onKeyDown={e => {
+              // Ignore the Enter that confirms a Chinese/Japanese input method composition
+              if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) handleAsk();
+            }}
             placeholder="Ask a question about your document..."
             style={{
               flex: 1,
@@ -304,6 +330,7 @@ export default function DocChat() {
         <div style={{ paddingBottom: 16 }}>
           <button
             onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
             style={{
               background: "none",
               border: "1px solid #2a2a2a",
@@ -315,7 +342,7 @@ export default function DocChat() {
               fontFamily: "inherit"
             }}
           >
-            Upload new PDF
+            {uploading ? "Processing..." : "Upload new PDF"}
           </button>
         </div>
       )}
@@ -337,6 +364,7 @@ export default function DocChat() {
 
       <input
         ref={fileInputRef}
+        data-testid="file-input"
         type="file"
         accept=".pdf"
         onChange={handleUpload}

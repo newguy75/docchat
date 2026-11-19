@@ -129,6 +129,10 @@ async def upload_pdf(file: UploadFile = File(...)):
         store, pages, chunks = await run_in_threadpool(build_store, tmp_path)
     except PdfReadError:
         raise HTTPException(status_code=400, detail="Could not read this file as a PDF")
+    except Exception as exc:
+        # Report unexpected errors as a normal JSON error. An unhandled exception comes back as plain
+        # text without CORS headers, and the browser would only show "Failed to fetch".
+        raise HTTPException(status_code=500, detail=f"Failed to process the PDF: {exc}"[:500])
     finally:
         os.unlink(tmp_path)
 
@@ -155,7 +159,11 @@ async def ask_question(request: QuestionRequest):
 
     context = "\n\n".join(doc.page_content for doc in docs)
     chain = PROMPT | get_llm() | StrOutputParser()
-    answer = await chain.ainvoke({"context": context, "question": question})
+    try:
+        answer = await chain.ainvoke({"context": context, "question": question})
+    except Exception as exc:
+        # Wrong key, quota used up, network problem...: tell the frontend why
+        raise HTTPException(status_code=502, detail=f"Gemini request failed: {exc}"[:500])
     return AnswerResponse(answer=answer, sources=page_labels(docs))
 
 
